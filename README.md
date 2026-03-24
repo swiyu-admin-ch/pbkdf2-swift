@@ -2,7 +2,7 @@
 
 # pbkdf2 (password hashing) for Swift applications
 
-This project contains language bindings required for loading and using the Rust [pbkdf2](https://github.com/RustCrypto/password-hashes) library in Swift applications.
+This project contains language bindings required for loading and using the swiyu [pbkdf2](https://github.com/swiyu-admin-ch/pbkdf2-bindgen) library (Rust) in Swift applications.
 
 You are more then welcome to explore the [relevant examples](https://github.com/swiyu-admin-ch/pbkdf2-examples) in a further detail.
 
