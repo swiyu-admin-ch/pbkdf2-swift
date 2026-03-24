@@ -5,7 +5,7 @@ let version = "0.12.2"
 let xcframework_name = "pbkdf2"
 let binary_target_url_github_owner = "swiyu-admin-ch"
 let binary_target_url_github_repo = "pbkdf2-swift"
-let checksum = "d58cd82ade962a499806e3ce24fe91c7330fee252e06282249cc5ee16873d194"
+let checksum = "08a0d7690533da0d2e6be9d006ccc28a6b675e77a1da49d0003222ab016de139"
 
 let package = Package(
     name: "Pbkdf2",
