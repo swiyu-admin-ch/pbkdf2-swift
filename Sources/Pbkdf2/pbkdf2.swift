@@ -519,29 +519,43 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 
 /**
- * A compiled JSON Schema validator.
- *
- * This structure represents a JSON Schema that has been parsed and compiled into
- * an efficient internal representation for validation. It contains the root node
- * of the schema tree and the configuration options used during compilation.
+ * PBKDF2 (password hashing) function implementation, as specified in [RFC 2898](https://tools.ietf.org/html/rfc2898).
  */
-public protocol Pbkdf2KeyDerivatorProtocol: AnyObject, Sendable {
+public protocol Pbkdf2Protocol: AnyObject, Sendable {
     
+    /**
+     * Compute PBKDF2 function from the supplied `password` and `salt` value.
+     */
     func hashPassword(password: Data, salt: Data) throws  -> Data
     
+    /**
+     * Compute PBKDF2 function from the supplied `password` and `salt` value.
+     *
+     * A `B64`-encoded (standard Base64 without padding) password hash
+     * is returned as string in the PHC string format.
+     *
+     * `B64` encoding: standard Base64 without padding.
+     *
+     * ```text
+     * [A-Z]      [a-z]      [0-9]      +     /
+     * 0x41-0x5a, 0x61-0x7a, 0x30-0x39, 0x2b, 0x2f
+     * ```
+     * <https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64>
+     */
     func hashPasswordAsString(password: Data, salt: Data) throws  -> String
     
+    /**
+     * Compute the PBKDF2 function against the supplied `password` using the parameters
+     * from the provided `B64`-encoded `password_hash`
+     * and returns `true` if and only if the computed output matches, otherwise `false`.
+     */
     func verifyPassword(password: Data, passwordHash: String) throws  -> Bool
     
 }
 /**
- * A compiled JSON Schema validator.
- *
- * This structure represents a JSON Schema that has been parsed and compiled into
- * an efficient internal representation for validation. It contains the root node
- * of the schema tree and the configuration options used during compilation.
+ * PBKDF2 (password hashing) function implementation, as specified in [RFC 2898](https://tools.ietf.org/html/rfc2898).
  */
-open class Pbkdf2KeyDerivator: Pbkdf2KeyDerivatorProtocol, @unchecked Sendable {
+open class Pbkdf2: Pbkdf2Protocol, @unchecked Sendable {
     fileprivate let handle: UInt64
 
     /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
@@ -578,15 +592,21 @@ open class Pbkdf2KeyDerivator: Pbkdf2KeyDerivatorProtocol, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiCloneHandle() -> UInt64 {
-        return try! rustCall { uniffi_pbkdf2_fn_clone_pbkdf2keyderivator(self.handle, $0) }
+        return try! rustCall { uniffi_pbkdf2_fn_clone_pbkdf2(self.handle, $0) }
     }
-public convenience init(alg: Algorithm, rounds: UInt32, outputLength: UInt32) {
+    /**
+     * The empty constructor relying completely on default parameters (algorithm, rounds, output_length),
+     * as suggested by the [OWASP cheat sheet]:
+     *
+     * > Use PBKDF2 with a work factor of 600,000 or more and set with an
+     * > internal hash function of HMAC-SHA-256.
+     *
+     * [OWASP cheat sheet]: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+     */
+public convenience init() {
     let handle =
         try! rustCall() {
-    uniffi_pbkdf2_fn_constructor_pbkdf2keyderivator_new(
-        FfiConverterTypeAlgorithm_lower(alg),
-        FfiConverterUInt32.lower(rounds),
-        FfiConverterUInt32.lower(outputLength),$0
+    uniffi_pbkdf2_fn_constructor_pbkdf2_new($0
     )
 }
     self.init(unsafeFromHandle: handle)
@@ -598,15 +618,31 @@ public convenience init(alg: Algorithm, rounds: UInt32, outputLength: UInt32) {
             return
         }
 
-        try! rustCall { uniffi_pbkdf2_fn_free_pbkdf2keyderivator(handle, $0) }
+        try! rustCall { uniffi_pbkdf2_fn_free_pbkdf2(handle, $0) }
     }
 
     
+    /**
+     * The most potent non-empty constructor with customization in mind.
+     */
+public static func newCustom(alg: Algorithm, rounds: UInt32, outputLength: UInt32) -> Pbkdf2  {
+    return try!  FfiConverterTypePbkdf2_lift(try! rustCall() {
+    uniffi_pbkdf2_fn_constructor_pbkdf2_new_custom(
+        FfiConverterTypeAlgorithm_lower(alg),
+        FfiConverterUInt32.lower(rounds),
+        FfiConverterUInt32.lower(outputLength),$0
+    )
+})
+}
+    
 
     
+    /**
+     * Compute PBKDF2 function from the supplied `password` and `salt` value.
+     */
 open func hashPassword(password: Data, salt: Data)throws  -> Data  {
-    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypePbkdf2KeyDerivatorError_lift) {
-    uniffi_pbkdf2_fn_method_pbkdf2keyderivator_hash_password(
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypePbkdf2Error_lift) {
+    uniffi_pbkdf2_fn_method_pbkdf2_hash_password(
             self.uniffiCloneHandle(),
         FfiConverterData.lower(password),
         FfiConverterData.lower(salt),$0
@@ -614,9 +650,23 @@ open func hashPassword(password: Data, salt: Data)throws  -> Data  {
 })
 }
     
+    /**
+     * Compute PBKDF2 function from the supplied `password` and `salt` value.
+     *
+     * A `B64`-encoded (standard Base64 without padding) password hash
+     * is returned as string in the PHC string format.
+     *
+     * `B64` encoding: standard Base64 without padding.
+     *
+     * ```text
+     * [A-Z]      [a-z]      [0-9]      +     /
+     * 0x41-0x5a, 0x61-0x7a, 0x30-0x39, 0x2b, 0x2f
+     * ```
+     * <https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64>
+     */
 open func hashPasswordAsString(password: Data, salt: Data)throws  -> String  {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypePbkdf2KeyDerivatorError_lift) {
-    uniffi_pbkdf2_fn_method_pbkdf2keyderivator_hash_password_as_string(
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypePbkdf2Error_lift) {
+    uniffi_pbkdf2_fn_method_pbkdf2_hash_password_as_string(
             self.uniffiCloneHandle(),
         FfiConverterData.lower(password),
         FfiConverterData.lower(salt),$0
@@ -624,9 +674,14 @@ open func hashPasswordAsString(password: Data, salt: Data)throws  -> String  {
 })
 }
     
+    /**
+     * Compute the PBKDF2 function against the supplied `password` using the parameters
+     * from the provided `B64`-encoded `password_hash`
+     * and returns `true` if and only if the computed output matches, otherwise `false`.
+     */
 open func verifyPassword(password: Data, passwordHash: String)throws  -> Bool  {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypePbkdf2KeyDerivatorError_lift) {
-    uniffi_pbkdf2_fn_method_pbkdf2keyderivator_verify_password(
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypePbkdf2Error_lift) {
+    uniffi_pbkdf2_fn_method_pbkdf2_verify_password(
             self.uniffiCloneHandle(),
         FfiConverterData.lower(password),
         FfiConverterString.lower(passwordHash),$0
@@ -642,24 +697,24 @@ open func verifyPassword(password: Data, passwordHash: String)throws  -> Bool  {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public struct FfiConverterTypePbkdf2KeyDerivator: FfiConverter {
+public struct FfiConverterTypePbkdf2: FfiConverter {
     typealias FfiType = UInt64
-    typealias SwiftType = Pbkdf2KeyDerivator
+    typealias SwiftType = Pbkdf2
 
-    public static func lift(_ handle: UInt64) throws -> Pbkdf2KeyDerivator {
-        return Pbkdf2KeyDerivator(unsafeFromHandle: handle)
+    public static func lift(_ handle: UInt64) throws -> Pbkdf2 {
+        return Pbkdf2(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: Pbkdf2KeyDerivator) -> UInt64 {
+    public static func lower(_ value: Pbkdf2) -> UInt64 {
         return value.uniffiCloneHandle()
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Pbkdf2KeyDerivator {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Pbkdf2 {
         let handle: UInt64 = try readInt(&buf)
         return try lift(handle)
     }
 
-    public static func write(_ value: Pbkdf2KeyDerivator, into buf: inout [UInt8]) {
+    public static func write(_ value: Pbkdf2, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
     }
 }
@@ -668,30 +723,35 @@ public struct FfiConverterTypePbkdf2KeyDerivator: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePbkdf2KeyDerivator_lift(_ handle: UInt64) throws -> Pbkdf2KeyDerivator {
-    return try FfiConverterTypePbkdf2KeyDerivator.lift(handle)
+public func FfiConverterTypePbkdf2_lift(_ handle: UInt64) throws -> Pbkdf2 {
+    return try FfiConverterTypePbkdf2.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePbkdf2KeyDerivator_lower(_ value: Pbkdf2KeyDerivator) -> UInt64 {
-    return FfiConverterTypePbkdf2KeyDerivator.lower(value)
+public func FfiConverterTypePbkdf2_lower(_ value: Pbkdf2) -> UInt64 {
+    return FfiConverterTypePbkdf2.lower(value)
 }
 
 
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * PBKDF2 variants.
+ *
+ * <https://en.wikipedia.org/wiki/PBKDF2>
+ */
 
 public enum Algorithm: Equatable, Hashable {
     
     /**
-
+     * PBKDF2 SHA-256
      */
     case pbkdf2Sha256
     /**
-
+     * PBKDF2 SHA-512
      */
     case pbkdf2Sha512
 
@@ -756,20 +816,21 @@ public func FfiConverterTypeAlgorithm_lower(_ value: Algorithm) -> RustBuffer {
 
 
 /**
- * The error accompanying Pbkdf2KeyDerivator.
- * It might occur while calling Pbkdf2KeyDerivator methods.
+ * The error accompanying `Pbkdf2`.
+ *
+ * It might occur while calling `Pbkdf2` methods.
  */
-public enum Pbkdf2KeyDerivatorError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public enum Pbkdf2Error: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
     /**
-
+     * Password hash computation failed
      */
     case PasswordHashingError(message: String)
     
     /**
-
+     * Password hash verification failed
      */
     case PasswordVerificationError(message: String)
     
@@ -786,16 +847,16 @@ public enum Pbkdf2KeyDerivatorError: Swift.Error, Equatable, Hashable, Foundatio
 }
 
 #if compiler(>=6)
-extension Pbkdf2KeyDerivatorError: Sendable {}
+extension Pbkdf2Error: Sendable {}
 #endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public struct FfiConverterTypePbkdf2KeyDerivatorError: FfiConverterRustBuffer {
-    typealias SwiftType = Pbkdf2KeyDerivatorError
+public struct FfiConverterTypePbkdf2Error: FfiConverterRustBuffer {
+    typealias SwiftType = Pbkdf2Error
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Pbkdf2KeyDerivatorError {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Pbkdf2Error {
         let variant: Int32 = try readInt(&buf)
         switch variant {
 
@@ -815,7 +876,7 @@ public struct FfiConverterTypePbkdf2KeyDerivatorError: FfiConverterRustBuffer {
         }
     }
 
-    public static func write(_ value: Pbkdf2KeyDerivatorError, into buf: inout [UInt8]) {
+    public static func write(_ value: Pbkdf2Error, into buf: inout [UInt8]) {
         switch value {
 
         
@@ -835,15 +896,15 @@ public struct FfiConverterTypePbkdf2KeyDerivatorError: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePbkdf2KeyDerivatorError_lift(_ buf: RustBuffer) throws -> Pbkdf2KeyDerivatorError {
-    return try FfiConverterTypePbkdf2KeyDerivatorError.lift(buf)
+public func FfiConverterTypePbkdf2Error_lift(_ buf: RustBuffer) throws -> Pbkdf2Error {
+    return try FfiConverterTypePbkdf2Error.lift(buf)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePbkdf2KeyDerivatorError_lower(_ value: Pbkdf2KeyDerivatorError) -> RustBuffer {
-    return FfiConverterTypePbkdf2KeyDerivatorError.lower(value)
+public func FfiConverterTypePbkdf2Error_lower(_ value: Pbkdf2Error) -> RustBuffer {
+    return FfiConverterTypePbkdf2Error.lower(value)
 }
 
 private enum InitializationResult {
@@ -861,16 +922,19 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_pbkdf2_checksum_method_pbkdf2keyderivator_hash_password() != 24245) {
+    if (uniffi_pbkdf2_checksum_method_pbkdf2_hash_password() != 30067) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pbkdf2_checksum_method_pbkdf2keyderivator_hash_password_as_string() != 15738) {
+    if (uniffi_pbkdf2_checksum_method_pbkdf2_hash_password_as_string() != 3357) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pbkdf2_checksum_method_pbkdf2keyderivator_verify_password() != 1449) {
+    if (uniffi_pbkdf2_checksum_method_pbkdf2_verify_password() != 40753) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pbkdf2_checksum_constructor_pbkdf2keyderivator_new() != 46696) {
+    if (uniffi_pbkdf2_checksum_constructor_pbkdf2_new() != 13266) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pbkdf2_checksum_constructor_pbkdf2_new_custom() != 58517) {
         return InitializationResult.apiChecksumMismatch
     }
 
