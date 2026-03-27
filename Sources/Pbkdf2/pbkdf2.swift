@@ -519,12 +519,31 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 
 /**
- * PBKDF2 (password hashing) function implementation, as specified in [RFC 2898](https://tools.ietf.org/html/rfc2898).
+ * PBKDF2 (password hashing) function implementation,
+ * as specified in `RFC 2898` (https://tools.ietf.org/html/rfc2898).
  */
 public protocol Pbkdf2Protocol: AnyObject, Sendable {
     
     /**
      * Compute PBKDF2 function from the supplied `password` and `salt` value.
+     *
+     * `B64` encoding is the standard `Base64` without padding,
+     * as specified by https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64
+     *
+     * Beware of the length restrictions for salts, emerging from the PHC string format specification,
+     * available at https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#function-duties:
+     *
+     * 1. The recommended default length for a salt string is **16-bytes** (128-bits).
+     *
+     * 2. Salt strings are constrained to the following set of characters per the PHC spec:
+     *
+     * > The salt consists in a sequence of characters in: `[a-zA-Z0-9/+.-]`
+     * > (lowercase letters, uppercase letters, digits, /, +, . and -).
+     *
+     * Additionally, the following length restrictions are enforced based on the guidelines from the spec:
+     *
+     * - Minimum length: **4**-bytes
+     * - Maximum length: **64**-bytes
      */
     func hashPassword(password: Data, salt: Data) throws  -> Data
     
@@ -534,13 +553,23 @@ public protocol Pbkdf2Protocol: AnyObject, Sendable {
      * A `B64`-encoded (standard Base64 without padding) password hash
      * is returned as string in the PHC string format.
      *
-     * `B64` encoding: standard Base64 without padding.
+     * `B64` encoding is the standard `Base64` without padding,
+     * as specified by https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64
      *
-     * ```text
-     * [A-Z]      [a-z]      [0-9]      +     /
-     * 0x41-0x5a, 0x61-0x7a, 0x30-0x39, 0x2b, 0x2f
-     * ```
-     * <https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64>
+     * Beware of the length restrictions for salts, emerging from the PHC string format specification,
+     * available at https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#function-duties:
+     *
+     * 1. The recommended default length for a salt string is **16-bytes** (128-bits).
+     *
+     * 2. Salt strings are constrained to the following set of characters per the PHC spec:
+     *
+     * > The salt consists in a sequence of characters in: `[a-zA-Z0-9/+.-]`
+     * > (lowercase letters, uppercase letters, digits, /, +, . and -).
+     *
+     * Additionally, the following length restrictions are enforced based on the guidelines from the spec:
+     *
+     * - Minimum length: **4**-bytes
+     * - Maximum length: **64**-bytes
      */
     func hashPasswordAsString(password: Data, salt: Data) throws  -> String
     
@@ -553,7 +582,8 @@ public protocol Pbkdf2Protocol: AnyObject, Sendable {
     
 }
 /**
- * PBKDF2 (password hashing) function implementation, as specified in [RFC 2898](https://tools.ietf.org/html/rfc2898).
+ * PBKDF2 (password hashing) function implementation,
+ * as specified in `RFC 2898` (https://tools.ietf.org/html/rfc2898).
  */
 open class Pbkdf2: Pbkdf2Protocol, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -596,12 +626,11 @@ open class Pbkdf2: Pbkdf2Protocol, @unchecked Sendable {
     }
     /**
      * The empty constructor relying completely on default parameters (algorithm, rounds, output_length),
-     * as suggested by the [OWASP cheat sheet]:
+     * as suggested by the OWASP cheat sheet,
+     * available at https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html:
      *
      * > Use PBKDF2 with a work factor of 600,000 or more and set with an
      * > internal hash function of HMAC-SHA-256.
-     *
-     * [OWASP cheat sheet]: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
      */
 public convenience init() {
     let handle =
@@ -639,6 +668,24 @@ public static func newCustom(alg: Algorithm, rounds: UInt32, outputLength: UInt3
     
     /**
      * Compute PBKDF2 function from the supplied `password` and `salt` value.
+     *
+     * `B64` encoding is the standard `Base64` without padding,
+     * as specified by https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64
+     *
+     * Beware of the length restrictions for salts, emerging from the PHC string format specification,
+     * available at https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#function-duties:
+     *
+     * 1. The recommended default length for a salt string is **16-bytes** (128-bits).
+     *
+     * 2. Salt strings are constrained to the following set of characters per the PHC spec:
+     *
+     * > The salt consists in a sequence of characters in: `[a-zA-Z0-9/+.-]`
+     * > (lowercase letters, uppercase letters, digits, /, +, . and -).
+     *
+     * Additionally, the following length restrictions are enforced based on the guidelines from the spec:
+     *
+     * - Minimum length: **4**-bytes
+     * - Maximum length: **64**-bytes
      */
 open func hashPassword(password: Data, salt: Data)throws  -> Data  {
     return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypePbkdf2Error_lift) {
@@ -656,13 +703,23 @@ open func hashPassword(password: Data, salt: Data)throws  -> Data  {
      * A `B64`-encoded (standard Base64 without padding) password hash
      * is returned as string in the PHC string format.
      *
-     * `B64` encoding: standard Base64 without padding.
+     * `B64` encoding is the standard `Base64` without padding,
+     * as specified by https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64
      *
-     * ```text
-     * [A-Z]      [a-z]      [0-9]      +     /
-     * 0x41-0x5a, 0x61-0x7a, 0x30-0x39, 0x2b, 0x2f
-     * ```
-     * <https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#b64>
+     * Beware of the length restrictions for salts, emerging from the PHC string format specification,
+     * available at https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#function-duties:
+     *
+     * 1. The recommended default length for a salt string is **16-bytes** (128-bits).
+     *
+     * 2. Salt strings are constrained to the following set of characters per the PHC spec:
+     *
+     * > The salt consists in a sequence of characters in: `[a-zA-Z0-9/+.-]`
+     * > (lowercase letters, uppercase letters, digits, /, +, . and -).
+     *
+     * Additionally, the following length restrictions are enforced based on the guidelines from the spec:
+     *
+     * - Minimum length: **4**-bytes
+     * - Maximum length: **64**-bytes
      */
 open func hashPasswordAsString(password: Data, salt: Data)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypePbkdf2Error_lift) {
